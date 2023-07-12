@@ -46,6 +46,14 @@ for i in range(20):
 	#FFC5B138
 
 
-	#TODO: overwrite char*c with an address containing '\0' so that the loop terminates immedately
+	#TODO: overwrite char*c with an address containing '\0' so that the loop terminates immedately                   
+	# section .data
+    #	null_char db 0
+	# mov eax, null_char
+	# mov [c], eax
+
 	#	   overwrite char*name with FFFFFFF
+	# mov eax, 0xFFFFFFFF
+    # mov [name], eax
+	
 	#	   guess the buffer address
