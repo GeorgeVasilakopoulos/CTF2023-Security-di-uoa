@@ -87,10 +87,14 @@ Tasks:
 
 Προς συμπλήρωση:
 
-Απαντήσεις:
-1. ef281a07091268a0d779cf489d00380c
-2. aCEDIsRateRe
-3. To achieve buffer overflow we first identified what safeguards the server creators had taken to avoid buffer overflow, in detail:
+## Απαντήσεις:
+#1. 
+ef281a07091268a0d779cf489d00380c
+# 2. 
+aCEDIsRateRe
+
+# 3.
+To achieve buffer overflow we first identified what safeguards the server creators had taken to avoid buffer overflow, in detail:
 - Canaries
 - Non-executable stack
 - Address space layout randomization (ASLR)
