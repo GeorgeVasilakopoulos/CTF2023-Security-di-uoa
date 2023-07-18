@@ -91,6 +91,56 @@ Tasks:
 1. ef281a07091268a0d779cf489d00380c
 2. aCEDIsRateRe
 3. 
+
+We followed a fairly similar path to answer questions 3 and 4. 
+
+To achieve buffer overflow we first identified what safeguards the server creators had taken to avoid buffer overflow, in detail:
+- Canaries
+- Non-executable stack
+- Address space layout randomization (ASLR)
+
+Since we have a non-executable stack, we can't put our own code in the buffer and execute it through the buffer overflow, so we have to do things differently.
+
+Then we followed the following path:
+Initially, we found that the buffer size takes a value from the payload variable, which takes a value from Content-Length which we access using post request
+
+```⠀
+  char post_data[payload_size+1];     // dynamic size, to ensure it's big enough
+  strcpy(post_data, payload);
+```⠀
+
+```⠀
+    t += 3; // now the *t shall be the beginning of user payload, after \r\n
+    t2 = request_header("Content-Length"); // and the related header if there is
+    payload = t;
+    payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
+```⠀
+So, we decided to give Content-Length a value of 66 and put something much larger in the buffer (post_data) via strcpy, which copies regardless of size until it finds '\0'.
+
+-We found that the stack of post_param from the buffer has the following format on local variables
+```
+|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value| 
+```
+(where trash space not related to variables)
+These variables have the following properties:
+- param_name is pointer to null
+- name, c and value are going to be overwritten, so we initialize them with trash
+- p_post_data is pointer to first & in the code that we put (or later). This will be further analysed later. 
+
+´Then comes the canary. 
+
+Then follow the old values of registers ebx, esi,ebp. It is worth noting that the value stored in esi has no meaning so we initialize them with trash and the value stored in ebx is canary.
+
+And finally there is the return address of post_param in the route.
+
+Finally, the stack has the following form:
+```
+|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|return address|
+```
+
+
+
+
 ```⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣦⣴⣶⣶⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀
