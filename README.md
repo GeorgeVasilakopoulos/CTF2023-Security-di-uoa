@@ -90,63 +90,71 @@ Tasks:
 Απαντήσεις:
 1. ef281a07091268a0d779cf489d00380c
 2. aCEDIsRateRe
-3. 
 
 We followed a fairly similar path to answer questions 3 and 4. 
-
-To achieve buffer overflow we first identified what safeguards the server creators had taken to avoid buffer overflow, in detail:
+3. To achieve buffer overflow we first identified what safeguards the server creators had taken to avoid buffer overflow, in detail:
 - Canaries
 - Non-executable stack
 - Address space layout randomization (ASLR)
 
-Since we have a non-executable stack, we can't put our own code in the buffer and execute it through the buffer overflow, so we have to do things differently.
+Since we have a non-executable stack, we can't put our own code in the buffer and execute it through the buffer overflow, so we have to do things differently. Specifically, we will use the send_file function in the main.c file with argument "/etc/secret" + '\0'.
 
 Then we followed the following path:
-Initially, we found that the buffer size takes a value from the payload variable, which takes a value from Content-Length which we access using post request
+Initially, we found that the buffer size takes a value from the payload variable, which takes a value from Content-Length which we access using post request.
 
-```⠀
+```
 t += 3; // now the *t shall be the beginning of user payload, after \r\n
 t2 = request_header("Content-Length"); // and the related header if there is
 payload = t;
 payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
-```⠀
+
+```⠀ 
 
 So, we decided to give Content-Length a value of 66 and put something much larger in the buffer (post_data) via strcpy, which copies regardless of size until it finds '\0'.
 
-```⠀
+```⠀ 
 char post_data[payload_size+1];     // dynamic size, to ensure it's big enough
 strcpy(post_data, payload);
 
-```⠀
+```⠀ 
 
+Seventh, because ASLR shuffles addresses we found the address of the buffer, the send_file, the original return address of post_param to route, function and the value of canary.
 
-
--We found that the stack of post_param from the buffer has the following format on local variables
-```
-|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value| 
-```
+Then, we found that the stack of post_param from the buffer has the following format on local variables
+          |post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value| 
 (where trash space not related to variables)
 These variables have the following properties:
 - param_name is pointer to null
 - name, c and value are going to be overwritten, so we initialize them with trash
 - p_post_data is pointer to first & in the code that we put (or later). This will be further analysed later. 
 
-´Then comes the canary. 
+Then comes the canary. 
 
 Then follow the old values of registers ebx, esi,ebp. It is worth noting that the value stored in esi has no meaning so we initialize them with trash and the value stored in ebx is canary.
 
 And finally there is the return address of post_param in the route.
 
-Finally, the stack has the following form:
-```
-|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|return address|
-```
+The buffer has the following form:
+```  
+|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|original return address|
+```  
+Our goal is to overwrite the return address of the function so that we can execute the send_file function with argument "/etc/secret" + '\0'. 
+For this purpose we assigned the post data buffer the /etc/secret" + '\0' and filled the rest of its space with "!". We also filled the buffer according to the way described above up to the return address and putting "!" wherever there is garbage. Then we replaced the return address with the address of the send_file syntax. Then, we added to the buffer the original return address of post_param to route to allow the program to continue execution and complete smoothly. Then, we added to the buffer pointer in the top of the buffer, where the argument is stored. Finally we added '\0' because strcpy is should copy til there.
 
-
-
+Finally, the buffer has the following form:
+```  
+|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|send_file|original return address|guessed_address|'\0'|
+```   
+Although the plan described above sounds efficient, it was not. This was because strcpy stops copying at the first '\0' it encounters, i.e. "/etc/secret" + '\0'. To avoid this, we'll replace '\0' with '&' and let this loop fix it later in the run.
 
 ```⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  for (char* c = post_data; *c != '\0'; c++)
+    if (*c == '&' || *c == '=')
+      *c = '\0';
+```⠀⠀
+
+```⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  ⢀⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣦⣴⣶⣶⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⣀⠀⠀⠀⠀⢻⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀
