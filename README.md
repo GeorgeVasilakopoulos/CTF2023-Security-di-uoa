@@ -105,17 +105,21 @@ Then we followed the following path:
 Initially, we found that the buffer size takes a value from the payload variable, which takes a value from Content-Length which we access using post request
 
 ```⠀
-  char post_data[payload_size+1];     // dynamic size, to ensure it's big enough
-  strcpy(post_data, payload);
+t += 3; // now the *t shall be the beginning of user payload, after \r\n
+t2 = request_header("Content-Length"); // and the related header if there is
+payload = t;
+payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
 ```⠀
 
-```⠀
-    t += 3; // now the *t shall be the beginning of user payload, after \r\n
-    t2 = request_header("Content-Length"); // and the related header if there is
-    payload = t;
-    payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
-```⠀
 So, we decided to give Content-Length a value of 66 and put something much larger in the buffer (post_data) via strcpy, which copies regardless of size until it finds '\0'.
+
+```⠀
+char post_data[payload_size+1];     // dynamic size, to ensure it's big enough
+strcpy(post_data, payload);
+
+```⠀
+
+
 
 -We found that the stack of post_param from the buffer has the following format on local variables
 ```
