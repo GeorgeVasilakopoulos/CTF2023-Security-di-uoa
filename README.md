@@ -12,9 +12,9 @@
 Tasks:
 
 1. Βρείτε το MD5 digest του plaintext password
-1. Βρείτε το plaintext password
-1. Βρείτε το περιεχόμενο του αρχείου `/etc/secret` στον server
-1. Βρείτε το αποτέλεσμα της εντολής `lspci` στον server
+2. Βρείτε το plaintext password
+3. Βρείτε το περιεχόμενο του αρχείου `/etc/secret` στον server
+4. Βρείτε το αποτέλεσμα της εντολής `lspci` στον server
 
 
 
@@ -138,7 +138,7 @@ aCEDIsRateRe
 
 
 
-# 3. Stealing ```/etc/secret```
+### 3. Stealing ```/etc/secret```
 
 To achieve buffer overflow we first identified what safeguards the server creators had taken to avoid such an attack, in detail:
 
@@ -164,44 +164,54 @@ Then we took the following approach:
 
   Of course, Content-Length is simply a label, and it is possible to send a request with a faulty Content-Length value. So, we decided to give Content-Length a value of 66 and put something much larger in the buffer (post_data) via strcpy, which copies regardless of size until '\0' is found.
 
-```⠀ 
-char post_data[payload_size+1];     // dynamic size, to ensure it's big enough
-strcpy(post_data, payload);
-```
+  ```⠀ 
+  char post_data[payload_size+1];     // dynamic size, to ensure it's big enough
+  strcpy(post_data, payload);
+  ```
 
 - Because ASLR shuffles addresses we found the following addresses by determining their offsets from known addresses that can be found by exploiting the string format vulnerability of question 1: address of the buffer, address of send_file, original return address of post_param back to route.
 
 - Similarly, the value of the canary variable was found directly through a string format attack.
 
-Then, we found that the stack of post_param from the buffer has the following format on *local variables*
-          |/etc/secret|\0|80\*trash|26\*trash|param_name|8\*trash|name|c|4\*trash|p_post_data|value|
-(where trash space not related to variables)
-These variables have the following properties:
-- param_name is a pointer to a null character.
-- name, c and value are going to be overwritten, so we can initialize them with trash
-- p_post_data is pointer to the first '&' that we inserted. This will be further analysed later. 
+  Then, we found that the stack of post_param from the buffer has the following format on *local variables*
+  
+          |/etc/secret|\0|80*trash|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|
+
+  (where trash space not related to variables)
+
+  These stack positions directly correspond to variables in the c program:
+  - ```param_name``` is a char pointer, that is the argument of ```post_param()```.
+  - ```name```, ```c``` and ```value``` correspond to 'temporary' variables used in the program
+  - ```p_post_data``` is pointer through which the buffer is meant to be accessed. 
+  
+
+  After the local variables, there were a few other parameters that were contained into the stack:
+
+  - The Canary value
+  - Old values of ```$ebx```, ```$esi```, ```$ebp```
+
+  It was necessary to overwrite the values of the registers with their original values, in order for the execution to continue back to route() after being diverted to send_file(). If the program were to terminate abnormally after the execution of send_file, the contents of /etc/source would not be contained into the response request. In order to ensure the inclusion of the file into the request, it was necessary to divert the execution back to route(), so that ``fflush()`` ```shutdown()``` and ```close()``` would get called.
+
+- Finally, next to all of these parameters, the **return address** is located.
 
 
-After the local variables, there were a few other parameters that were contained into the stack:
-
-- The Canary value
-- Old values of ebx, esi, ebp
-
-The insertion of old register values into the stack was proven necessary, in order for the execution to continue back to route() after being diverted to send_file(). If the program were to terminate abnormally after the execution of send_file, the contents of /etc/source would not be contained into the response request. In order to ensure the inclusion of the file into the request, it was necessary to divert the execution back to route(), so that ``fflush()`` ```shutdown()``` and ```close()``` would get called.
-
-Finally, next to all of these parameters, the **return address** is located.
-
-
-Finally, the last values to be inserted were:
-- The return address of send_file()
-- The return address of post_param in route().
-
-
-Therefore, the stack after the buffer has the following format:
+Therefore, the contents of the stack after the buffer are:
 ```  
 |post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|return address of frame|
 ```  
-Our goal is to overwrite the return address of the frame so that we can execute the send_file function with argument "/etc/secret" + '\0'. 
+
+Then, we proceeded to overwrite the stack with the approprate data:
+  - We inserted the register values and the canary in the appropriate positions.
+  - In the return address of the frame we inserted the address of ``send_file()```
+  - Adjacently, we inserted the original return address, so that the execution is continued smoothly 
+  - Next, we inserted a pointer to the beginning of the buffer after the return address (this is the argument of ```send_file()```)
+  - We inserted ```"/etc/secret"+'\0'``` into the buffer
+  - We initialized ```p_post_data``` to point at the beginning of the buffer
+
+
+
+
+Our goal is to overwrite the return address of the frame so that we can execute ```send_file()``` with argument "/etc/secret" + '\0'. 
 For this purpose we assigned into the post data buffer the "/etc/secret" + '\0' and filled the rest of its space with "!". We also filled the buffer according to the way described above up to the return address, while putting "!" wherever there is garbage. Then, we replaced the return address with the address of the send_file function. Then, we added to the buffer the original return address of post_param to route to allow the program to continue execution and complete smoothly. Then, we added to the buffer pointer in the top of the buffer, where the argument is stored. Finally we added '\0' because strcpy is should copy til there.
 
 Finally, the buffer has the following form:
