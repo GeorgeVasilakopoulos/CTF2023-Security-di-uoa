@@ -88,7 +88,7 @@ Tasks:
 Προς συμπλήρωση:
 
 ## Απαντήσεις:
-#1. 
+# 1. 
 ef281a07091268a0d779cf489d00380c
 # 2. 
 aCEDIsRateRe
@@ -104,7 +104,7 @@ Since we have a non-executable stack, we can't put our own code in the buffer an
 Then we followed the following path:
 Initially, we found that the buffer size takes a value from the payload variable, which takes a value from Content-Length which we access using post request.
 
-```
+``` 
 t += 3; // now the *t shall be the beginning of user payload, after \r\n
 t2 = request_header("Content-Length"); // and the related header if there is
 payload = t;
@@ -144,8 +144,9 @@ Our goal is to overwrite the return address of the function so that we can execu
 For this purpose we assigned the post data buffer the /etc/secret" + '\0' and filled the rest of its space with "!". We also filled the buffer according to the way described above up to the return address and putting "!" wherever there is garbage. Then we replaced the return address with the address of the send_file syntax. Then, we added to the buffer the original return address of post_param to route to allow the program to continue execution and complete smoothly. Then, we added to the buffer pointer in the top of the buffer, where the argument is stored. Finally we added '\0' because strcpy is should copy til there.
 
 Finally, the buffer has the following form:
+
 ```  
-|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|send_file|original return address|guessed_address|'\0'|
+|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|send_file|original return address|buffer_address|'\0'|
 ```   
 Although the plan described above sounds efficient, it was not. This was because strcpy stops copying at the first '\0' it encounters, i.e. "/etc/secret" + '\0'. To avoid this, we'll replace '\0' with '&' and let this loop fix it later in the run.
 
@@ -180,7 +181,20 @@ Although the plan described above sounds efficient, it was not. This was because
 
             You guessed it... puppies!
 ```
-4. 
+# 4. 
+
+In question 4 we followed a similar methodology to question 3, with some variations. 
+- First, instead of the send_file function, we used the system of libc function, with argument "lspci" + '\0'. 
+- Therefore, we looked for the direction of system instead of send_file which we found by using an offset from a stable address. 
+- Still, because calling system gives some unwanted values to ebx, we will continue running the program after system not at the original return address of post_param in the route but a bit further down, so that the program continues smoothly.
+- Finally, because there is a possibility that the beginning of the buffer could be overwritten by calling system, we put the argument after pointer in the top of the buffer, where the argument is stored, and replace pointer in the top of the buffer with pointer in the argument.
+
+The buffer will look like that:
+
+```
+|post_data|26*trash|param_name|8*trash|name|c|4*trash|p_post_data|value|canary|old_ebx| old_esi|old_ebp|system|original return address + offset|pointer to argument|"lspci"|'\0'|
+```
+
 ```
 0:00.0 Host bridge: Intel Corporation 440FX - 82441FX PMC [Natoma]
 00:01.0 ISA bridge: Intel Corporation 82371SB PIIX3 ISA [Natoma/Triton II]
