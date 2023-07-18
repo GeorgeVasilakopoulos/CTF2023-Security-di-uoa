@@ -154,15 +154,15 @@ Then we took the following approach:
 - Initially, we noticed that in ```post_param```, the buffer```post_data``` is allocated dynamically in the stack. After careful observation we noticed that the size of the buffer originates from the Content-Length parameter of the post request. 
 
 
-``` 
-t += 3; // now the *t shall be the beginning of user payload, after \r\n
-t2 = request_header("Content-Length"); // and the related header if there is
-payload = t;
-payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
+  ``` 
+  t += 3; // now the *t shall be the beginning of user payload, after \r\n
+  t2 = request_header("Content-Length"); // and the related header if there is
+  payload = t;
+  payload_size = t2 ? atol(t2) : (rcvd - (t - buf));
+  
+  ```
 
-```
-
-Of course, Content-Length is simply a label, and it is possible to send a request with a faulty Content-Length value. So, we decided to give Content-Length a value of 66 and put something much larger in the buffer (post_data) via strcpy, which copies regardless of size until '\0' is found.
+  Of course, Content-Length is simply a label, and it is possible to send a request with a faulty Content-Length value. So, we decided to give Content-Length a value of 66 and put something much larger in the buffer (post_data) via strcpy, which copies regardless of size until '\0' is found.
 
 ```⠀ 
 char post_data[payload_size+1];     // dynamic size, to ensure it's big enough
