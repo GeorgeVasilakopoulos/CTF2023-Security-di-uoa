@@ -1,10 +1,10 @@
 FROM debian:latest
 # Use an official Python runtime as the base image
-FROM python:3.9
+FROM python:3.8.8
 
 # install packages
 RUN apt update
-RUN apt install -y python3
+RUN apt install -y python
 
 # copy script inside container
 COPY docker-run.sh /root/
@@ -16,16 +16,16 @@ COPY requirements.txt /root/
 RUN pip install --no-cache-dir -r /root/requirements.txt 
 
 # copy script inside container
-COPY v1.py /root/
+COPY Task1.py /root/
 
 # copy script inside container
-COPY v2.py /root/
+COPY Task2.py /root/
 
 # copy script inside container
-COPY v4.py /root/
+COPY Task4.py /root/
 
 # copy script inside container
-COPY v3.py /root/
+COPY Task3.py /root/
 
 # run when container starts
 CMD ["bash", "/root/docker-run.sh"]

