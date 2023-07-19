@@ -1,4 +1,4 @@
-FROM debian:latest
+FROM ubuntu:20.04
 # Use an official Python runtime as the base image
 FROM python:3.8.8
 

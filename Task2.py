@@ -8,7 +8,7 @@ username = "admin"
 password = "8c6e2f34df08e2f879e61eeb9e8ba96f8d9e96d8033870f80127567d270d7d96"
 
 url = "http://project-2.csec.chatzi.org:8000"
-requests_per_sec = 1/4
+requests_per_sec = 1/4  ##Increase for faster results
 
 #############################
 
